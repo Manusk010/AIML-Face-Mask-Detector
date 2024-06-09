@@ -1,0 +1,68 @@
+installing necessary packages for the model production and processing
+import cv2
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.decomposition import PCA
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+loading the dataset
+with_mask = np.load('with_mask (1).npy')
+without_mask = np.load('without_mask (1).npy')
+with_mask.shape
+(800, 50, 50, 3)
+without_mask.shape
+(800, 50, 50, 3)
+reshaping the data from n dimension to 2 dimensional figures
+with_mask = with_mask.reshape(800,50*50*3)
+without_mask = without_mask.reshape(800,50*50*3)
+with_mask.shape
+(800, 7500)
+without_mask.shape
+(800, 7500)
+x=np.r_[with_mask, without_mask]
+x.shape
+(1600, 7500)
+labels = np.zeros(x.shape[0])
+labels[800:] = 1.0
+names = {0: "mask", 1: "no mask"}
+spliting the data into training data and testing data
+x_train,x_test,y_train,y_test = train_test_split(x,labels,test_size=0.25)
+x_train.shape
+(1200, 7500)
+initializing the model
+pca = PCA(n_components=3)
+x_train = pca.fit_transform(x_train)
+x_train[0]
+array([-1998.61776439, 1709.30968515, -2150.25553409])
+
+x_train.shape
+(1200, 3)
+svm = SVC()
+svm.fit(x_train,y_train)
+x_test = pca.transform(x_test)
+y_pred = svm.predict(x_test)
+accuracy_score(y_test,y_pred)
+0.97
+haar_data = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+capture = cv2.VideoCapture(0)
+data = []
+font = cv2.FONT_HERSHEY_COMPLEX
+while True:
+flag, img = capture.read()
+if flag:
+faces= haar_data.detectMultiScale(img)
+for x,y,w,h in faces:
+cv2.rectangle(img,(x,y), (x+w,y+h),(255,0,255), 4)
+face = img[y:y+h, x:x+w, :]
+face = cv2.resize(face, (50,50))
+face = face.reshape(1,-1)
+face = pca.transform(face)
+pred = svm.predict(face)
+n = names[int(pred)]
+cv2.putText(img,n,(x,y),font, 1,(244,250,250),2)
+print(n)
+cv2.imshow('result', img)
+if cv2.waitKey(2) == 27:
+break
+capture.release()
+cv2.destroyAllWindows()
